@@ -16,10 +16,10 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
 camera.lookAt(0, 0, 0);
 
-// Pull the camera in so the unit sphere fills the smaller viewport dimension.
-// Small margin keeps the idle breathing pulse from clipping; aggressive
-// squeeze/pinch deformations can spill past the edges, which is intentional.
-const FIT_MARGIN = 1.05;
+// Pull the camera in so the unit sphere fills ~90% of the smaller viewport
+// dimension. The margin leaves room for idle breathing and mild deformation;
+// aggressive squeeze/pinch can still spill past the edges, which is intentional.
+const FIT_MARGIN = 1 / 0.9;
 function fitCamera() {
   const aspect = window.innerWidth / window.innerHeight;
   camera.aspect = aspect;
