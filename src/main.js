@@ -14,8 +14,21 @@ document.body.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
-camera.position.set(0, 0, 4.5);
 camera.lookAt(0, 0, 0);
+
+// Pull the camera in so the unit sphere fills the smaller viewport dimension.
+// Small margin keeps the idle breathing pulse from clipping; aggressive
+// squeeze/pinch deformations can spill past the edges, which is intentional.
+const FIT_MARGIN = 1.05;
+function fitCamera() {
+  const aspect = window.innerWidth / window.innerHeight;
+  camera.aspect = aspect;
+  const halfVFov = THREE.MathUtils.degToRad(camera.fov) / 2;
+  const limitFactor = Math.tan(halfVFov) * Math.min(1, aspect);
+  camera.position.set(0, 0, FIT_MARGIN / limitFactor);
+  camera.updateProjectionMatrix();
+}
+fitCamera();
 
 // Bloom disabled — the HDR's bright windows were smearing everywhere. The
 // composer machinery is removed; we render directly with ACES on the renderer.
@@ -673,8 +686,7 @@ renderer.domElement.style.cursor = 'grab';
 
 // ---------- resize & loop ----------
 window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
+  fitCamera();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
