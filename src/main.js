@@ -345,14 +345,14 @@ scene.add(rimLight);
 const SPRING_STIFFNESS = 130; // faster response, still no jelly wobble
 const SPRING_DAMPING = 23;    // critically damped-ish (ζ≈1.0)
 // Non-linear resistance: the spring chases pow(target, RESISTANCE) instead of
-// target directly. >1 = ball resists light squeezes but still compresses fully
-// under heavy pressure. Feels like foam firmness.
-const RESISTANCE = 1.3;
+// target directly. 1.0 = linear, so light pressure produces visible squish
+// immediately (squishier foam, less firm).
+const RESISTANCE = 1.0;
 // Click-hold logistic ramp: target = HOLD_MAX / (1 + e^(-k*(t - midpoint)))
-// Short taps barely squeeze; long holds asymptote to HOLD_MAX.
-const HOLD_MAX = 0.7;
-const HOLD_K = 6;           // steepness
-const HOLD_MIDPOINT = 0.5;  // seconds to reach HOLD_MAX/2
+// Tuned so a tap squishes noticeably and a ~0.4s hold gets near full squeeze.
+const HOLD_MAX = 0.8;
+const HOLD_K = 14;          // steeper — quicker ramp around the midpoint
+const HOLD_MIDPOINT = 0.15; // seconds to reach HOLD_MAX/2
 let holdStartMs = 0;
 let impactValue = 0;
 let impactVelocity = 0;
