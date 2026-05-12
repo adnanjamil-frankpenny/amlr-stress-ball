@@ -2,17 +2,16 @@ import * as THREE from 'three';
 import { RGBELoader } from 'three/examples/jsm/loaders/RGBELoader.js';
 
 // ---------- renderer / scene / camera ----------
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x000000, 0);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.0;
 document.body.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x000000);
-scene.backgroundBlurriness = 0.01; // soften the backdrop without affecting reflections on the ball
 
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
 camera.position.set(0, 0, 4.5);
@@ -28,7 +27,6 @@ pmrem.compileEquirectangularShader();
 new RGBELoader().load('/poly_haven_studio_2k.hdr', (hdrTex) => {
   const envMap = pmrem.fromEquirectangular(hdrTex).texture;
   scene.environment = envMap;
-  scene.background = envMap;
   hdrTex.dispose();
   pmrem.dispose();
 });
@@ -189,15 +187,15 @@ material.onBeforeCompile = (shader) => {
        transformed = axis * (a * axialFactor) + perp * perpFactor;
 
        // Hand contacts: each contact carves a local inward dent that fades with
-       // distance. Coefficients encode relative depth (palm deepest, thumb
-       // middle, fingers shallowest). All scaled by the spring amplitude.
+       // distance. Only applied during squeeze (s > 0); during expansion the
+       // ball is being stretched, not grabbed, so the dents are suppressed.
        float contactDent = 0.0;
        for (int i = 0; i < 6; i++) {
          float d = distance(position, uContactPoints[i]);
          float f = 1.0 - smoothstep(0.0, uContactRadii[i], d);
          contactDent += f * uContactCoeffs[i];
        }
-       transformed -= normal * contactDent * s;`
+       transformed -= normal * contactDent * max(s, 0.0);`
     );
 
   shader.fragmentShader = shader.fragmentShader
@@ -526,8 +524,8 @@ function updatePinchMode() {
   if (activePointers.size < 2) return;
   const [a, b] = [...activePointers.values()];
   const dist = Math.hypot(a.x - b.x, a.y - b.y);
-  const t = (pinchInitialDist - dist) / pinchInitialDist; // -∞..1
-  impactTarget = Math.max(0, Math.min(PINCH_TARGET_MAX, t));
+  const t = (pinchInitialDist - dist) / pinchInitialDist; // >0 = inward, <0 = outward
+  impactTarget = Math.max(-PINCH_TARGET_MAX, Math.min(PINCH_TARGET_MAX, t));
 }
 
 function exitPinchMode() {
@@ -664,9 +662,9 @@ renderer.domElement.addEventListener('wheel', (event) => {
     wheelPinchActive = true;
     wheelPinchLevel = 0;
   }
-  // deltaY > 0 when fingers come together (browser maps that to zoom-out);
-  // that's the gesture we want to read as "squeeze".
-  wheelPinchLevel = Math.max(0, Math.min(PINCH_TARGET_MAX, wheelPinchLevel + event.deltaY * WHEEL_PINCH_SCALE));
+  // deltaY > 0 when fingers come together (squeeze); <0 when they spread
+  // apart (expand the ball along the axis).
+  wheelPinchLevel = Math.max(-PINCH_TARGET_MAX, Math.min(PINCH_TARGET_MAX, wheelPinchLevel + event.deltaY * WHEEL_PINCH_SCALE));
   wheelPinchLastTime = performance.now();
   impactTarget = wheelPinchLevel;
 }, { passive: false });
